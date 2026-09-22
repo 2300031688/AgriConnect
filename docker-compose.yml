@@ -22,7 +22,6 @@ services:
 
   backend:
     image: 2300031688/agriconnect-backend:latest
-
     container_name: agriconnect-backend
 
     ports:
@@ -39,7 +38,6 @@ services:
 
   frontend:
     image: 2300031688/agriconnect-frontend:latest
-
     container_name: agriconnect-frontend
 
     ports:
@@ -55,10 +53,8 @@ services:
 
 
 volumes:
-
   agriconnect_mysql_data:
 
 
 networks:
-
- agriconnect-network:
+  agriconnect-network:
