@@ -19,16 +19,25 @@ services:
     networks:
       - agriconnect-network
 
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pdocker"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
 
   backend:
     image: 2300031688/agriconnect-backend:latest
+
     container_name: agriconnect-backend
 
     ports:
       - "2025:8080"
 
     depends_on:
-      - mysqldb
+      mysqldb:
+        condition: service_healthy
 
     restart: on-failure
 
@@ -38,6 +47,7 @@ services:
 
   frontend:
     image: 2300031688/agriconnect-frontend:latest
+
     container_name: agriconnect-frontend
 
     ports:
@@ -58,3 +68,4 @@ volumes:
 
 networks:
   agriconnect-network:
+    driver: bridge
