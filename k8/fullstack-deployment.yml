@@ -1,0 +1,215 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fullstack-app
+
+---
+# =====================================================
+# MYSQL DEPLOYMENT
+# =====================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: fullstack-app
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: mysql
+
+  template:
+    metadata:
+      labels:
+        app: mysql
+
+    spec:
+      containers:
+        - name: mysql
+
+          # MySQL Docker image
+          image: mysql:8.0
+
+          ports:
+            # MySQL runs INSIDE the container on 3306
+            - containerPort: 3306
+
+          env:
+            # MySQL root password
+            - name: MYSQL_ROOT_PASSWORD
+              value: docker
+
+            # Database name used by AgriConnect
+            - name: MYSQL_DATABASE
+              value: agriconnect
+
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+
+      volumes:
+        - name: mysql-storage
+          emptyDir: {}
+
+---
+# =====================================================
+# MYSQL SERVICE
+# =====================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysqldb
+  namespace: fullstack-app
+
+spec:
+  selector:
+    app: mysql
+
+  ports:
+    - protocol: TCP
+
+      # MySQL service port INSIDE Kubernetes
+      port: 3306
+
+      # MySQL container port
+      targetPort: 3306
+
+  # MySQL should NOT be exposed outside the cluster
+  type: ClusterIP
+
+---
+# =====================================================
+# BACKEND DEPLOYMENT - SPRING BOOT
+# =====================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: fullstack-app
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+
+    spec:
+      containers:
+        - name: backend
+
+          # YOUR AgriConnect backend image
+          image: 2300031688/agriconnect-backend:latest
+
+          ports:
+            # Spring Boot runs on 8080 INSIDE container
+            - containerPort: 8080
+
+          env:
+            # Database connection for Kubernetes
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysqldb:3306/agriconnect
+
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: docker
+
+---
+# =====================================================
+# BACKEND SERVICE
+# =====================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: fullstack-app
+
+spec:
+  selector:
+    app: backend
+
+  ports:
+    - protocol: TCP
+
+      # Service port
+      port: 8080
+
+      # Spring Boot container port
+      targetPort: 8080
+
+      # Port exposed on your computer
+      nodePort: 30025
+
+  # Allows browser to access backend through localhost:30025
+  type: NodePort
+
+---
+# =====================================================
+# FRONTEND DEPLOYMENT
+# =====================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: fullstack-app
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: frontend
+
+  template:
+    metadata:
+      labels:
+        app: frontend
+
+    spec:
+      containers:
+        - name: frontend
+
+          # YOUR AgriConnect frontend image
+          image: 2300031688/agriconnect-frontend:latest
+
+          ports:
+            # Nginx serves frontend on port 80
+            - containerPort: 80
+
+---
+# =====================================================
+# FRONTEND SERVICE
+# =====================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: fullstack-app
+
+spec:
+  selector:
+    app: frontend
+
+  ports:
+    - protocol: TCP
+
+      # Frontend service port
+      port: 80
+
+      # Nginx container port
+      targetPort: 80
+
+      # Port exposed on your computer
+      nodePort: 30080
+
+  # Allows browser to access frontend through localhost:30080
+  type: NodePort
